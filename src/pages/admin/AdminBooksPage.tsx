@@ -69,6 +69,7 @@ interface BookSearchResult {
   category_name?: string;
   publication_date?: string;
   language?: string;
+  cover_image_url?: string;
 }
 
 interface Category {
@@ -404,6 +405,39 @@ export const AdminBooksPage = () => {
   const getBookId = (book: Book) => book.id || book.book_id || '';
 
   const columns: ColumnsType<Book> = [
+    {
+      title: 'Portada',
+      dataIndex: 'cover_image_url',
+      key: 'cover_image_url',
+      width: 80,
+      render: (url: string | undefined) =>
+        url ? (
+          <img
+            src={url}
+            alt="cover"
+            style={{ width: 50, height: 70, objectFit: 'cover', borderRadius: 4 }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 50,
+              height: 70,
+              backgroundColor: '#f0f0f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 4,
+              color: '#999',
+              fontSize: 12,
+            }}
+          >
+            Sin imagen
+          </div>
+        ),
+    },
     {
       title: 'ISBN',
       dataIndex: 'isbn',
