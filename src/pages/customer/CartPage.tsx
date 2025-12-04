@@ -5,7 +5,7 @@ import {
   Typography,
   Space,
   InputNumber,
-  message,
+  App,
   Card,
   Empty,
   Divider,
@@ -29,6 +29,7 @@ interface CartItem {
 export const CartPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { message } = App.useApp();
 
   const { data: cartItems, isLoading } = useQuery<CartItem[]>({
     queryKey: ['cart'],
@@ -47,7 +48,18 @@ export const CartPage = () => {
       await api.put(`/cart/${id}`, { quantity });
     },
     onSuccess: () => {
+      message.success({
+        content: '✅ Cantidad actualizada exitosamente',
+        duration: 3,
+      });
       queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error({
+        content: err.response?.data?.message || 'Error al actualizar la cantidad',
+        duration: 3,
+      });
     },
   });
 
@@ -56,8 +68,18 @@ export const CartPage = () => {
       await api.delete(`/cart/${id}`);
     },
     onSuccess: () => {
-      message.success('Item eliminado del carrito');
+      message.success({
+        content: '✅ Item eliminado del carrito exitosamente',
+        duration: 3,
+      });
       queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error({
+        content: err.response?.data?.message || 'Error al eliminar el item',
+        duration: 3,
+      });
     },
   });
 
@@ -66,8 +88,18 @@ export const CartPage = () => {
       await api.delete('/cart');
     },
     onSuccess: () => {
-      message.success('Carrito vaciado');
+      message.success({
+        content: '✅ Carrito vaciado exitosamente',
+        duration: 3,
+      });
       queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error({
+        content: err.response?.data?.message || 'Error al vaciar el carrito',
+        duration: 3,
+      });
     },
   });
 

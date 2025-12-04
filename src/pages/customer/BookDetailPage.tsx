@@ -6,7 +6,7 @@ import {
   Space,
   Spin,
   InputNumber,
-  message,
+  App,
   Descriptions,
   Divider,
   Row,
@@ -38,6 +38,7 @@ export const BookDetailPage = () => {
   const { isAuthenticated } = useAuthStore();
   const [quantity, setQuantity] = useState(1);
   const queryClient = useQueryClient();
+  const { message } = App.useApp();
 
   const { data: book, isLoading } = useQuery<Book>({
     queryKey: ['book', id],
@@ -54,30 +55,68 @@ export const BookDetailPage = () => {
   });
 
   const addToCartMutation = useMutation({
-    mutationFn: async (qty: number) => {
-      const response = await api.post('/cart', {
-        book_id: id,
-        quantity: qty,
-      });
+    mutationFn: async ({ bookId, qty }: { bookId: string; qty: number }) => {
+      if (!bookId) {
+        throw new Error('ID del libro no válido');
+      }
+      
+      // Validar que el ID sea un UUID válido
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const cleanId = bookId.trim();
+      
+      if (!uuidRegex.test(cleanId)) {
+        console.error('ID inválido:', cleanId, 'Tipo:', typeof cleanId);
+        throw new Error('ID del libro no es un UUID válido');
+      }
+      
+      // Asegurar que quantity sea un número entero
+      const quantity = Math.floor(qty);
+      
+      const payload = {
+        book_id: cleanId,
+        quantity: quantity,
+      };
+      
+      console.log('Enviando al carrito:', payload);
+      console.log('Tipo de book_id:', typeof payload.book_id);
+      console.log('Valor de book_id:', JSON.stringify(payload.book_id));
+      
+      const response = await api.post('/cart', payload);
       return response.data;
     },
-    onSuccess: () => {
-      message.success('Libro agregado al carrito');
+    onSuccess: (_, variables) => {
+      message.success({
+        content: `✅ ${variables.qty} ${variables.qty === 1 ? 'ejemplar agregado' : 'ejemplares agregados'} al carrito exitosamente`,
+        duration: 4,
+      });
       queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { message?: string } } };
-      message.error(err.response?.data?.message || 'Error al agregar al carrito');
+      message.error({
+        content: err.response?.data?.message || 'Error al agregar al carrito',
+        duration: 4,
+      });
     },
   });
 
   const handleAddToCart = () => {
     if (!isAuthenticated) {
-      message.warning('Debes iniciar sesión para agregar al carrito');
+      message.warning({
+        content: '⚠️ Debes iniciar sesión para agregar al carrito',
+        duration: 3,
+      });
       navigate('/login');
       return;
     }
-    addToCartMutation.mutate(quantity);
+    if (!book?.id) {
+      message.error({
+        content: '❌ ID del libro no válido',
+        duration: 3,
+      });
+      return;
+    }
+    addToCartMutation.mutate({ bookId: book.id, qty: quantity });
   };
 
   if (isLoading) {

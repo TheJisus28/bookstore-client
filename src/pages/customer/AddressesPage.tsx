@@ -8,7 +8,7 @@ import {
   Form,
   Input,
   Switch,
-  message,
+  App,
   Popconfirm,
   Row,
   Col,
@@ -47,6 +47,7 @@ export const AddressesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const queryClient = useQueryClient();
+  const { message } = App.useApp();
 
   const { data: addresses, isLoading } = useQuery<Address[]>({
     queryKey: ['addresses'],
@@ -75,10 +76,20 @@ export const AddressesPage = () => {
       return response.data;
     },
     onSuccess: () => {
-      message.success('Dirección creada exitosamente');
+      message.success({
+        content: '✅ Dirección creada exitosamente',
+        duration: 3,
+      });
       setIsModalOpen(false);
       reset();
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error({
+        content: err.response?.data?.message || 'Error al crear la dirección',
+        duration: 3,
+      });
     },
   });
 
@@ -88,11 +99,21 @@ export const AddressesPage = () => {
       return response.data;
     },
     onSuccess: () => {
-      message.success('Dirección actualizada exitosamente');
+      message.success({
+        content: '✅ Dirección actualizada exitosamente',
+        duration: 3,
+      });
       setIsModalOpen(false);
       setEditingAddress(null);
       reset();
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error({
+        content: err.response?.data?.message || 'Error al actualizar la dirección',
+        duration: 3,
+      });
     },
   });
 
@@ -101,8 +122,18 @@ export const AddressesPage = () => {
       await api.delete(`/addresses/${id}`);
     },
     onSuccess: () => {
-      message.success('Dirección eliminada');
+      message.success({
+        content: '✅ Dirección eliminada exitosamente',
+        duration: 3,
+      });
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error({
+        content: err.response?.data?.message || 'Error al eliminar la dirección',
+        duration: 3,
+      });
     },
   });
 

@@ -6,13 +6,14 @@ import {
   Button,
   Typography,
   Space,
-  message,
+  App,
   Spin,
   Empty,
   Input,
   Row,
   Col,
   Divider,
+  Alert,
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import api from '../../config/api';
@@ -48,6 +49,7 @@ type CheckoutFormData = z.infer<typeof checkoutSchema>;
 export const CheckoutPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { message } = App.useApp();
 
   const { data: addresses, isLoading: addressesLoading } = useQuery<Address[]>({
     queryKey: ['addresses'],
@@ -84,14 +86,22 @@ export const CheckoutPage = () => {
       const response = await api.post('/orders', data);
       return response.data;
     },
-    onSuccess: () => {
-      message.success('Pedido creado exitosamente');
+    onSuccess: (data) => {
+      message.success({
+        content: '🎉 ¡Pedido confirmado exitosamente! Serás redirigido a tus pedidos.',
+        duration: 5,
+      });
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       queryClient.invalidateQueries({ queryKey: ['my-orders'] });
-      navigate('/orders');
+      setTimeout(() => {
+        navigate('/orders');
+      }, 2000);
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Error al crear el pedido');
+      message.error({
+        content: `❌ ${error.response?.data?.message || 'Error al confirmar el pedido. Por favor, intenta nuevamente.'}`,
+        duration: 5,
+      });
     },
   });
 

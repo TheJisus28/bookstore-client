@@ -1,4 +1,4 @@
-import { Form, Input, Button, Card, Typography, message } from 'antd';
+import { Form, Input, Button, Card, Typography, App } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -23,6 +23,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export const RegisterPage = () => {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
+  const { message } = App.useApp();
   const {
     control,
     handleSubmit,
@@ -39,12 +40,20 @@ export const RegisterPage = () => {
     },
     onSuccess: (data) => {
       setAuth(data.user, data.access_token);
-      message.success('Registro exitoso');
-      navigate('/');
+      message.success({
+        content: `🎉 ¡Bienvenido, ${data.user.first_name}! Tu cuenta ha sido creada exitosamente.`,
+        duration: 5,
+      });
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { message?: string } } };
-      message.error(err.response?.data?.message || 'Error al registrarse');
+      message.error({
+        content: err.response?.data?.message || 'Error al registrarse. Por favor, intenta nuevamente.',
+        duration: 4,
+      });
     },
   });
 

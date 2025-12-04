@@ -1,4 +1,4 @@
-import { Form, Input, Button, Card, Typography, message } from 'antd';
+import { Form, Input, Button, Card, Typography, App } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -20,6 +20,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export const LoginPage = () => {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
+  const { message } = App.useApp();
   const {
     control,
     handleSubmit,
@@ -36,12 +37,20 @@ export const LoginPage = () => {
     },
     onSuccess: (data) => {
       setAuth(data.user, data.access_token);
-      message.success('Inicio de sesión exitoso');
-      navigate(data.user.role === 'admin' ? '/admin/books' : '/');
+      message.success({
+        content: `✅ ¡Bienvenido, ${data.user.first_name}! Sesión iniciada exitosamente.`,
+        duration: 4,
+      });
+      setTimeout(() => {
+        navigate(data.user.role === 'admin' ? '/admin/books' : '/');
+      }, 800);
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { message?: string } } };
-      message.error(err.response?.data?.message || 'Error al iniciar sesión');
+      message.error({
+        content: err.response?.data?.message || 'Error al iniciar sesión. Verifica tus credenciales.',
+        duration: 4,
+      });
     },
   });
 
