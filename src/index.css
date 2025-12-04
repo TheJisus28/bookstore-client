@@ -1,0 +1,146 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+/* Mejorar estilos de inputs de Ant Design */
+.ant-input,
+.ant-input-password input,
+.ant-input-number,
+.ant-select-selector,
+.ant-input-affix-wrapper {
+  background-color: #ffffff !important;
+  border-color: #d9d9d9 !important;
+}
+
+.ant-input:hover,
+.ant-input-affix-wrapper:hover:not(.ant-input-affix-wrapper-disabled),
+.ant-input-number:hover,
+.ant-select:hover:not(.ant-select-disabled) .ant-select-selector {
+  border-color: #4096ff !important;
+}
+
+.ant-input:focus,
+.ant-input-focused,
+.ant-input-affix-wrapper-focused,
+.ant-input-password:focus,
+.ant-input-password-focused,
+.ant-input-number:focus,
+.ant-input-number-focused,
+.ant-select-focused:not(.ant-select-disabled) .ant-select-selector {
+  border-color: #4096ff !important;
+  box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1) !important;
+  background-color: #ffffff !important;
+}
+
+/* Mejorar placeholders - color más claro y legible */
+.ant-input::placeholder,
+.ant-input-password input::placeholder,
+.ant-input-number input::placeholder {
+  color: #8c8c8c !important;
+  opacity: 1 !important;
+  font-weight: 400 !important;
+}
+
+.ant-input-lg::placeholder,
+.ant-input-password.ant-input-affix-wrapper-lg input::placeholder {
+  font-size: 16px !important;
+}
+
+/* Asegurar que los inputs tengan fondo blanco siempre */
+.ant-input-affix-wrapper,
+.ant-input-affix-wrapper input {
+  background-color: #ffffff !important;
+}
+
+.ant-input-affix-wrapper:hover:not(.ant-input-affix-wrapper-disabled) {
+  border-color: #4096ff !important;
+  background-color: #ffffff !important;
+}
+
+.ant-input-affix-wrapper-focused {
+  border-color: #4096ff !important;
+  box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1) !important;
+  background-color: #ffffff !important;
+}
+
+/* Eliminar cualquier fondo gris de los inputs */
+.ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled):hover {
+  background-color: #ffffff !important;
+}
+
+/* Textarea también con fondo blanco */
+.ant-input {
+  background-color: #ffffff !important;
+}
+
+.ant-input:hover {
+  background-color: #ffffff !important;
+}
+
+.ant-input:focus,
+.ant-input-focused {
+  background-color: #ffffff !important;
+}
