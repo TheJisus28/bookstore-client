@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, DatePicker, Button, Table, Typography, Space, Statistic, Row, Col } from 'antd';
-import { BarChartOutlined } from '@ant-design/icons';
+import { Card, DatePicker, Table, Typography, Space, Statistic, Row, Col } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import api from '../../config/api';
 import type { ColumnsType } from 'antd/es/table';

@@ -1,6 +1,6 @@
 import { ConfigProvider } from 'antd';
 import esES from 'antd/locale/es_ES';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 interface AntdProviderProps {
   children: ReactNode;

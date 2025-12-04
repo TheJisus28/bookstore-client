@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, Row, Col, Input, Pagination, Spin, Typography, Button, Space } from 'antd';
-import { SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import api from '../../config/api';
-import { useAuthStore } from '../../store/authStore';
 
 const { Title, Text } = Typography;
 const { Meta } = Card;
@@ -28,7 +27,6 @@ interface BooksResponse {
 
 export const BooksPage = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
 

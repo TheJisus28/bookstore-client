@@ -10,6 +10,7 @@ import {
   message,
   Popconfirm,
   Typography,
+  Select,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import api from '../../config/api';
@@ -259,9 +260,9 @@ export const AdminCategoriesPage = () => {
                   allowClear
                   showSearch
                   optionFilterProp="children"
-                  filterOption={(input, option) =>
-                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                  }
+                      filterOption={(input: string, option?: { label?: string }) =>
+                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                      }
                 >
                   {allCategories
                     ?.filter((cat) => cat.id !== editingCategory?.id)

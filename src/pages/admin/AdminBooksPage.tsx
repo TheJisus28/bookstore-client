@@ -76,7 +76,7 @@ export const AdminBooksPage = () => {
   const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery<{
+  const { data, isLoading, error } = useQuery<{
     data: Book[];
     total: number;
     page: number;
@@ -86,6 +86,10 @@ export const AdminBooksPage = () => {
     queryFn: async () => {
       const response = await api.get(`/books/admin?page=${page}&limit=10`);
       return response.data;
+    },
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      message.error(error.response?.data?.message || 'Error al cargar los libros');
     },
   });
 
@@ -110,7 +114,6 @@ export const AdminBooksPage = () => {
     handleSubmit,
     reset,
     formState: { errors },
-    watch,
   } = useForm<BookFormData>({
     resolver: zodResolver(bookSchema),
     mode: 'onBlur',
@@ -235,9 +238,18 @@ export const AdminBooksPage = () => {
     },
   ];
 
+  if (error) {
+    return (
+      <div>
+        <Title level={2}>Administrar Libros</Title>
+        <p>Error al cargar los libros. Por favor, intenta de nuevo.</p>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <Space style={{ marginBottom: 24, width: '100%' }} direction="horizontal">
+      <Space style={{ marginBottom: 24, width: '100%', flexWrap: 'wrap' }} direction="horizontal">
         <Title level={2} style={{ margin: 0 }}>
           Administrar Libros
         </Title>
@@ -256,15 +268,16 @@ export const AdminBooksPage = () => {
 
       <Table
         columns={columns}
-        dataSource={data?.data}
+        dataSource={data?.data || []}
         rowKey="id"
         loading={isLoading}
         pagination={{
           current: page,
-          total: data?.total,
-          pageSize: data?.limit,
+          total: data?.total || 0,
+          pageSize: data?.limit || 10,
           onChange: setPage,
         }}
+        scroll={{ x: 800 }}
       />
 
       <Modal
@@ -366,6 +379,8 @@ export const AdminBooksPage = () => {
                   render={({ field }) => (
                     <InputNumber
                       {...field}
+                      value={field.value}
+                      onChange={(value) => field.onChange(value ?? 0)}
                       min={0.01}
                       step={0.01}
                       prefix="$"
@@ -391,6 +406,8 @@ export const AdminBooksPage = () => {
                   render={({ field }) => (
                     <InputNumber
                       {...field}
+                      value={field.value}
+                      onChange={(value) => field.onChange(value ?? 0)}
                       min={0}
                       style={{ width: '100%' }}
                       size="large"
@@ -409,6 +426,8 @@ export const AdminBooksPage = () => {
                   render={({ field }) => (
                     <InputNumber
                       {...field}
+                      value={field.value}
+                      onChange={(value) => field.onChange(value ?? undefined)}
                       min={1}
                       style={{ width: '100%' }}
                       size="large"

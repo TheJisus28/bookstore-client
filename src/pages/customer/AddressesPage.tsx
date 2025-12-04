@@ -61,7 +61,6 @@ export const AddressesPage = () => {
     handleSubmit,
     reset,
     formState: { errors },
-    watch,
   } = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
     mode: 'onBlur',
