@@ -91,3 +91,4 @@ El estado de autenticación se maneja con Zustand y se persiste en localStorage.
 ## API Integration
 
 Todas las llamadas a la API se hacen a través de Axios configurado en `src/config/api.ts`. El token JWT se agrega automáticamente a todas las peticiones.
+# bookstore-client
