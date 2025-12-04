@@ -20,6 +20,7 @@ import {
   Empty,
   Modal,
   Alert,
+  Popconfirm,
 } from 'antd';
 import {
   ShoppingCartOutlined,
@@ -31,9 +32,6 @@ import {
 import api from '../../config/api';
 import { useAuthStore } from '../../store/authStore';
 import { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -72,12 +70,10 @@ interface ReviewsResponse {
   totalPages: number;
 }
 
-const reviewSchema = z.object({
-  rating: z.number().min(1, 'La calificación es requerida').max(5, 'La calificación debe ser entre 1 y 5'),
-  comment: z.string().optional(),
-});
-
-type ReviewFormData = z.infer<typeof reviewSchema>;
+interface ReviewFormData {
+  rating: number;
+  comment?: string;
+}
 
 export const BookDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -86,9 +82,12 @@ export const BookDetailPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [reviewPage, setReviewPage] = useState(1);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
   const queryClient = useQueryClient();
   const { message } = App.useApp();
   const [form] = Form.useForm();
+  const [editForm] = Form.useForm();
 
   const { data: book, isLoading } = useQuery<Book>({
     queryKey: ['book', id],
@@ -192,6 +191,57 @@ export const BookDetailPage = () => {
     },
   });
 
+  const updateReviewMutation = useMutation({
+    mutationFn: async ({ reviewId, data }: { reviewId: string; data: ReviewFormData }) => {
+      const response = await api.put(`/reviews/${reviewId}`, {
+        rating: data.rating,
+        comment: data.comment || undefined,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      message.success({
+        content: '✅ Reseña actualizada exitosamente',
+        duration: 3,
+      });
+      setIsEditModalOpen(false);
+      setEditingReview(null);
+      editForm.resetFields();
+      queryClient.invalidateQueries({ queryKey: ['reviews', id] });
+      queryClient.invalidateQueries({ queryKey: ['can-review', id] });
+      queryClient.invalidateQueries({ queryKey: ['book', id] });
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error({
+        content: err.response?.data?.message || 'Error al actualizar la reseña',
+        duration: 4,
+      });
+    },
+  });
+
+  const deleteReviewMutation = useMutation({
+    mutationFn: async (reviewId: string) => {
+      await api.delete(`/reviews/${reviewId}`);
+    },
+    onSuccess: () => {
+      message.success({
+        content: '✅ Reseña eliminada exitosamente',
+        duration: 3,
+      });
+      queryClient.invalidateQueries({ queryKey: ['reviews', id] });
+      queryClient.invalidateQueries({ queryKey: ['can-review', id] });
+      queryClient.invalidateQueries({ queryKey: ['book', id] });
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error({
+        content: err.response?.data?.message || 'Error al eliminar la reseña',
+        duration: 4,
+      });
+    },
+  });
+
   const handleAddToCart = () => {
     if (!isAuthenticated) {
       message.warning({
@@ -221,6 +271,24 @@ export const BookDetailPage = () => {
       return;
     }
     createReviewMutation.mutate(values);
+  };
+
+  const handleEditReview = (review: Review) => {
+    setEditingReview(review);
+    editForm.setFieldsValue({
+      rating: review.rating,
+      comment: review.comment || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateReview = (values: ReviewFormData) => {
+    if (!editingReview) return;
+    updateReviewMutation.mutate({ reviewId: editingReview.id, data: values });
+  };
+
+  const handleDeleteReview = (reviewId: string) => {
+    deleteReviewMutation.mutate(reviewId);
   };
 
   if (isLoading) {
@@ -373,7 +441,39 @@ export const BookDetailPage = () => {
                 itemLayout="vertical"
                 dataSource={reviewsData.data}
                 renderItem={(review) => (
-                  <List.Item>
+                  <List.Item
+                    actions={
+                      isAuthenticated && user?.id === review.user_id
+                        ? [
+                            <Button
+                              key="edit"
+                              type="link"
+                              icon={<EditOutlined />}
+                              onClick={() => handleEditReview(review)}
+                            >
+                              Editar
+                            </Button>,
+                            <Popconfirm
+                              key="delete"
+                              title="¿Eliminar reseña?"
+                              description="¿Estás seguro de que deseas eliminar esta reseña?"
+                              onConfirm={() => handleDeleteReview(review.id)}
+                              okText="Sí"
+                              cancelText="No"
+                            >
+                              <Button
+                                type="link"
+                                danger
+                                icon={<DeleteOutlined />}
+                                loading={deleteReviewMutation.isPending}
+                              >
+                                Eliminar
+                              </Button>
+                            </Popconfirm>,
+                          ]
+                        : []
+                    }
+                  >
                     <List.Item.Meta
                       avatar={
                         <Avatar style={{ backgroundColor: '#1890ff' }}>
@@ -388,6 +488,11 @@ export const BookDetailPage = () => {
                           <Rate disabled defaultValue={review.rating} style={{ fontSize: 14 }} />
                           <Text type="secondary" style={{ fontSize: 12 }}>
                             {new Date(review.created_at).toLocaleDateString()}
+                            {review.updated_at !== review.created_at && (
+                              <span style={{ marginLeft: 8, fontStyle: 'italic' }}>
+                                (editada)
+                              </span>
+                            )}
                           </Text>
                         </Space>
                       }
@@ -456,7 +561,7 @@ export const BookDetailPage = () => {
         </Col>
       </Row>
 
-      {/* Review Modal */}
+      {/* Create Review Modal */}
       <Modal
         title="Dejar Reseña"
         open={isReviewModalOpen}
@@ -504,6 +609,64 @@ export const BookDetailPage = () => {
               <Button onClick={() => {
                 setIsReviewModalOpen(false);
                 form.resetFields();
+              }}>
+                Cancelar
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Edit Review Modal */}
+      <Modal
+        title="Editar Reseña"
+        open={isEditModalOpen}
+        onCancel={() => {
+          setIsEditModalOpen(false);
+          setEditingReview(null);
+          editForm.resetFields();
+        }}
+        footer={null}
+        width={600}
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={handleUpdateReview}
+        >
+          <Form.Item
+            label="Calificación"
+            name="rating"
+            rules={[{ required: true, message: 'Por favor, califica el libro' }]}
+          >
+            <Rate />
+          </Form.Item>
+
+          <Form.Item
+            label="Comentario (opcional)"
+            name="comment"
+          >
+            <TextArea
+              rows={4}
+              placeholder="Comparte tu opinión sobre este libro..."
+              maxLength={1000}
+              showCount
+            />
+          </Form.Item>
+
+          <Form.Item>
+            <Space>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={updateReviewMutation.isPending}
+              >
+                Actualizar Reseña
+              </Button>
+              <Button onClick={() => {
+                setIsEditModalOpen(false);
+                setEditingReview(null);
+                editForm.resetFields();
               }}>
                 Cancelar
               </Button>
