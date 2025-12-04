@@ -16,6 +16,8 @@ import {
   Row,
   Col,
   DatePicker,
+  Alert,
+  Spin,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import api from '../../config/api';
@@ -76,7 +78,8 @@ export const AdminBooksPage = () => {
   const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery<{
+
+  const { data, isLoading, error, isError } = useQuery<{
     data: Book[];
     total: number;
     page: number;
@@ -84,19 +87,34 @@ export const AdminBooksPage = () => {
   }>({
     queryKey: ['admin-books', page],
     queryFn: async () => {
-      const response = await api.get(`/books/admin?page=${page}&limit=10`);
-      return response.data;
+      try {
+        const response = await api.get(`/books/admin?page=${page}&limit=10`);
+        // Convertir price de string a number si viene como string
+        const books = response.data.data.map((book: any) => ({
+          ...book,
+          price: typeof book.price === 'string' ? parseFloat(book.price) : book.price,
+        }));
+        return {
+          ...response.data,
+          data: books,
+        };
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { message?: string }; status?: number } };
+        if (error.response?.status === 401) {
+          message.error('No autorizado. Por favor, inicia sesión nuevamente.');
+        } else {
+          message.error(error.response?.data?.message || 'Error al cargar los libros');
+        }
+        throw err;
+      }
     },
-    onError: (err: unknown) => {
-      const error = err as { response?: { data?: { message?: string } } };
-      message.error(error.response?.data?.message || 'Error al cargar los libros');
-    },
+    retry: 1,
   });
 
   const { data: categories } = useQuery<Category[]>({
     queryKey: ['categories'],
     queryFn: async () => {
-      const response = await api.get('/categories?limit=1000');
+      const response = await api.get('/categories?limit=100');
       return response.data.data;
     },
   });
@@ -104,7 +122,7 @@ export const AdminBooksPage = () => {
   const { data: publishers } = useQuery<Publisher[]>({
     queryKey: ['publishers'],
     queryFn: async () => {
-      const response = await api.get('/publishers?limit=1000');
+      const response = await api.get('/publishers?limit=100');
       return response.data.data;
     },
   });
@@ -204,7 +222,7 @@ export const AdminBooksPage = () => {
       title: 'Precio',
       dataIndex: 'price',
       key: 'price',
-      render: (price) => `$${price.toFixed(2)}`,
+      render: (price) => `$${typeof price === 'number' ? price.toFixed(2) : parseFloat(price || '0').toFixed(2)}`,
     },
     {
       title: 'Stock',
@@ -238,17 +256,13 @@ export const AdminBooksPage = () => {
     },
   ];
 
-  if (error) {
-    return (
-      <div>
-        <Title level={2}>Administrar Libros</Title>
-        <p>Error al cargar los libros. Por favor, intenta de nuevo.</p>
-      </div>
-    );
-  }
+  // Debug
+  console.log('AdminBooksPage - data:', data);
+  console.log('AdminBooksPage - isLoading:', isLoading);
+  console.log('AdminBooksPage - isError:', isError);
 
   return (
-    <div>
+    <div style={{ padding: '24px', background: '#fff', minHeight: '100%' }}>
       <Space style={{ marginBottom: 24, width: '100%', flexWrap: 'wrap' }} direction="horizontal">
         <Title level={2} style={{ margin: 0 }}>
           Administrar Libros
@@ -266,19 +280,45 @@ export const AdminBooksPage = () => {
         </Button>
       </Space>
 
-      <Table
-        columns={columns}
-        dataSource={data?.data || []}
-        rowKey="id"
-        loading={isLoading}
-        pagination={{
-          current: page,
-          total: data?.total || 0,
-          pageSize: data?.limit || 10,
-          onChange: setPage,
-        }}
-        scroll={{ x: 800 }}
-      />
+      {isError && (
+        <Alert
+          message="Error"
+          description={
+            (error as { response?: { data?: { message?: string } } })?.response?.data
+              ?.message || 'Error al cargar los libros. Por favor, intenta de nuevo.'
+          }
+          type="error"
+          showIcon
+          style={{ marginBottom: 24 }}
+        />
+      )}
+
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: 50 }}>
+          <Spin size="large" />
+        </div>
+      ) : data && data.data ? (
+        <Table
+          columns={columns}
+          dataSource={data.data}
+          rowKey="id"
+          loading={isLoading}
+          pagination={{
+            current: page,
+            total: data.total || 0,
+            pageSize: data.limit || 10,
+            onChange: setPage,
+          }}
+          scroll={{ x: 800 }}
+          locale={{
+            emptyText: 'No hay libros disponibles',
+          }}
+        />
+      ) : (
+        <div style={{ textAlign: 'center', padding: 50 }}>
+          <p>No hay datos disponibles</p>
+        </div>
+      )}
 
       <Modal
         title={editingBook ? 'Editar Libro' : 'Nuevo Libro'}
@@ -505,15 +545,15 @@ export const AdminBooksPage = () => {
                   control={control}
                   render={({ field }) => (
                     <DatePicker
-                      {...field}
                       style={{ width: '100%' }}
                       size="large"
                       format="YYYY-MM-DD"
                       placeholder="Seleccionar fecha"
-                      value={field.value ? dayjs(field.value) : null}
+                      value={field.value && field.value !== '' ? dayjs(field.value) : null}
                       onChange={(date) => {
                         field.onChange(date ? date.format('YYYY-MM-DD') : '');
                       }}
+                      onBlur={field.onBlur}
                     />
                   )}
                 />

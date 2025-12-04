@@ -42,13 +42,62 @@ export const AppRoutes = () => {
           <Route path="addresses" element={<AddressesPage />} />
 
           <Route path="admin">
-            <Route path="books" element={<AdminBooksPage />} />
-            <Route path="categories" element={<AdminCategoriesPage />} />
-            <Route path="publishers" element={<AdminPublishersPage />} />
-            <Route path="authors" element={<AdminAuthorsPage />} />
-            <Route path="orders" element={<AdminOrdersPage />} />
-            <Route path="users" element={<AdminUsersPage />} />
-            <Route path="reports" element={<AdminReportsPage />} />
+            <Route
+              path="books"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminBooksPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="categories"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminCategoriesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="publishers"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPublishersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="authors"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminAuthorsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="orders"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminOrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="users"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminUsersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="reports"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminReportsPage />
+                </ProtectedRoute>
+              }
+            />
           </Route>
         </Route>
 

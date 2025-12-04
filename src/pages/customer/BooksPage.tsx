@@ -41,7 +41,15 @@ export const BooksPage = () => {
         params.append('search', search);
       }
       const response = await api.get(`/books?${params.toString()}`);
-      return response.data;
+      // Convertir price de string a number si viene como string
+      const books = response.data.data.map((book: any) => ({
+        ...book,
+        price: typeof book.price === 'string' ? parseFloat(book.price) : book.price,
+      }));
+      return {
+        ...response.data,
+        data: books,
+      };
     },
   });
 
@@ -108,7 +116,7 @@ export const BooksPage = () => {
                     title={book.title}
                     description={
                       <div>
-                        <Text strong>${book.price.toFixed(2)}</Text>
+                        <Text strong>${typeof book.price === 'number' ? book.price.toFixed(2) : parseFloat(book.price || '0').toFixed(2)}</Text>
                         <br />
                         <Text type="secondary">Stock: {book.stock}</Text>
                       </div>

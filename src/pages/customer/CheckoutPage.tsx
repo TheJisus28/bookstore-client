@@ -61,7 +61,11 @@ export const CheckoutPage = () => {
     queryKey: ['cart'],
     queryFn: async () => {
       const response = await api.get('/cart');
-      return response.data;
+      // Convertir price de string a number si viene como string
+      return response.data.map((item: any) => ({
+        ...item,
+        price: typeof item.price === 'string' ? parseFloat(item.price) : item.price,
+      }));
     },
   });
 
@@ -97,7 +101,10 @@ export const CheckoutPage = () => {
 
   const calculateTotal = () => {
     if (!cartItems) return 0;
-    return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    return cartItems.reduce((sum, item) => {
+      const price = typeof item.price === 'number' ? item.price : parseFloat(item.price || '0');
+      return sum + price * item.quantity;
+    }, 0);
   };
 
   if (addressesLoading || cartLoading) {
@@ -202,7 +209,7 @@ export const CheckoutPage = () => {
                   <Text>
                     {item.title} x{item.quantity}
                   </Text>
-                  <Text>${(item.price * item.quantity).toFixed(2)}</Text>
+                  <Text>${((typeof item.price === 'number' ? item.price : parseFloat(item.price || '0')) * item.quantity).toFixed(2)}</Text>
                 </div>
               ))}
               <Divider />

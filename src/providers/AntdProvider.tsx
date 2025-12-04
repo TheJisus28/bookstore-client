@@ -1,6 +1,11 @@
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App } from 'antd';
 import esES from 'antd/locale/es_ES';
+import dayjs from 'dayjs';
+import 'dayjs/locale/es';
 import type { ReactNode } from 'react';
+
+// Configurar dayjs para español
+dayjs.locale('es');
 
 interface AntdProviderProps {
   children: ReactNode;
@@ -17,7 +22,9 @@ export const AntdProvider = ({ children }: AntdProviderProps) => {
         },
       }}
     >
-      {children}
+      <App>
+        {children}
+      </App>
     </ConfigProvider>
   );
 };

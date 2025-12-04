@@ -34,7 +34,11 @@ export const CartPage = () => {
     queryKey: ['cart'],
     queryFn: async () => {
       const response = await api.get('/cart');
-      return response.data;
+      // Convertir price de string a number si viene como string
+      return response.data.map((item: any) => ({
+        ...item,
+        price: typeof item.price === 'string' ? parseFloat(item.price) : item.price,
+      }));
     },
   });
 
@@ -69,7 +73,10 @@ export const CartPage = () => {
 
   const calculateTotal = () => {
     if (!cartItems) return 0;
-    return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    return cartItems.reduce((sum, item) => {
+      const price = typeof item.price === 'number' ? item.price : parseFloat(item.price || '0');
+      return sum + price * item.quantity;
+    }, 0);
   };
 
   const columns: ColumnsType<CartItem> = [
@@ -94,7 +101,7 @@ export const CartPage = () => {
       title: 'Precio',
       dataIndex: 'price',
       key: 'price',
-      render: (price) => `$${price.toFixed(2)}`,
+      render: (price) => `$${typeof price === 'number' ? price.toFixed(2) : parseFloat(price || '0').toFixed(2)}`,
       responsive: ['md'],
     },
     {
@@ -113,7 +120,10 @@ export const CartPage = () => {
     {
       title: 'Subtotal',
       key: 'subtotal',
-      render: (_, record) => `$${(record.price * record.quantity).toFixed(2)}`,
+      render: (_, record) => {
+        const price = typeof record.price === 'number' ? record.price : parseFloat(record.price || '0');
+        return `$${(price * record.quantity).toFixed(2)}`;
+      },
       responsive: ['sm'],
     },
     {

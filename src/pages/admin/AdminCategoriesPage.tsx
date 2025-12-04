@@ -58,7 +58,7 @@ export const AdminCategoriesPage = () => {
   const { data: allCategories } = useQuery<Category[]>({
     queryKey: ['all-categories'],
     queryFn: async () => {
-      const response = await api.get('/categories?limit=1000');
+      const response = await api.get('/categories?limit=100');
       return response.data.data;
     },
   });

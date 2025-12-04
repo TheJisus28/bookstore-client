@@ -36,7 +36,15 @@ export const OrdersPage = () => {
     queryKey: ['my-orders'],
     queryFn: async () => {
       const response = await api.get('/orders/my-orders');
-      return response.data;
+      // Convertir total_amount de string a number si viene como string
+      const orders = response.data.data.map((order: any) => ({
+        ...order,
+        total_amount: typeof order.total_amount === 'string' ? parseFloat(order.total_amount) : order.total_amount,
+      }));
+      return {
+        ...response.data,
+        data: orders,
+      };
     },
   });
 
@@ -59,7 +67,7 @@ export const OrdersPage = () => {
       title: 'Total',
       dataIndex: 'total_amount',
       key: 'total_amount',
-      render: (amount) => `$${amount.toFixed(2)}`,
+      render: (amount) => `$${typeof amount === 'number' ? amount.toFixed(2) : parseFloat(amount || '0').toFixed(2)}`,
     },
     {
       title: 'Fecha',

@@ -43,7 +43,12 @@ export const BookDetailPage = () => {
     queryKey: ['book', id],
     queryFn: async () => {
       const response = await api.get(`/books/${id}`);
-      return response.data;
+      // Convertir price de string a number si viene como string
+      const bookData = response.data;
+      return {
+        ...bookData,
+        price: typeof bookData.price === 'string' ? parseFloat(bookData.price) : bookData.price,
+      };
     },
     enabled: !!id,
   });
@@ -125,7 +130,7 @@ export const BookDetailPage = () => {
         <Col xs={24} sm={24} md={16}>
           <Title level={2}>{book.title}</Title>
           <Title level={3} style={{ color: '#1890ff' }}>
-            ${book.price.toFixed(2)}
+            ${typeof book.price === 'number' ? book.price.toFixed(2) : parseFloat(book.price || '0').toFixed(2)}
           </Title>
 
           <Divider />
