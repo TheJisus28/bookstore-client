@@ -8,6 +8,7 @@ import { BookDetailPage } from '../pages/customer/BookDetailPage';
 import { CartPage } from '../pages/customer/CartPage';
 import { CheckoutPage } from '../pages/customer/CheckoutPage';
 import { OrdersPage } from '../pages/customer/OrdersPage';
+import { OrderDetailPage } from '../pages/customer/OrderDetailPage';
 import { AddressesPage } from '../pages/customer/AddressesPage';
 import { AdminBooksPage } from '../pages/admin/AdminBooksPage';
 import { AdminOrdersPage } from '../pages/admin/AdminOrdersPage';
@@ -39,6 +40,7 @@ export const AppRoutes = () => {
           <Route path="cart" element={<CartPage />} />
           <Route path="checkout" element={<CheckoutPage />} />
           <Route path="orders" element={<OrdersPage />} />
+          <Route path="orders/:id" element={<OrderDetailPage />} />
           <Route path="addresses" element={<AddressesPage />} />
 
           <Route path="admin">
