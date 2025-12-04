@@ -58,6 +58,7 @@ interface Book {
   is_active: boolean;
   publisher_name?: string;
   category_name?: string;
+  authors?: Array<{ id: string; first_name: string; last_name: string; is_primary: boolean }>;
 }
 
 interface BookSearchResult {
@@ -101,6 +102,8 @@ const bookSchema = z.object({
   category_id: z.string().uuid().optional().or(z.literal('')),
   cover_image_url: z.string().url('URL inválida').optional().or(z.literal('')),
   is_active: z.boolean().default(true),
+  author_ids: z.array(z.string().uuid()).optional(),
+  primary_author_id: z.string().uuid().optional(),
 });
 
 type BookFormData = z.infer<typeof bookSchema>;
@@ -326,6 +329,7 @@ export const AdminBooksPage = () => {
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<BookFormData>({
     resolver: zodResolver(bookSchema),
@@ -335,8 +339,11 @@ export const AdminBooksPage = () => {
       is_active: true,
       stock: 0,
       price: 0,
+      author_ids: [],
     },
   });
+
+  const selectedAuthorIds = watch('author_ids') || [];
 
   const createMutation = useMutation({
     mutationFn: async (data: BookFormData) => {
@@ -385,6 +392,8 @@ export const AdminBooksPage = () => {
 
   const handleEdit = (book: Book) => {
     setEditingBook(book);
+    const authorIds = book.authors?.map((a) => a.id) || [];
+    const primaryAuthorId = book.authors?.find((a) => a.is_primary)?.id || authorIds[0] || '';
     reset({
       isbn: book.isbn,
       title: book.title,
@@ -398,6 +407,8 @@ export const AdminBooksPage = () => {
       category_id: book.category_id || '',
       cover_image_url: book.cover_image_url || '',
       is_active: book.is_active ?? true,
+      author_ids: authorIds,
+      primary_author_id: primaryAuthorId,
     });
     setIsModalOpen(true);
   };
@@ -516,7 +527,13 @@ export const AdminBooksPage = () => {
             icon={<PlusOutlined />}
             onClick={() => {
               setEditingBook(null);
-              reset();
+              reset({
+                language: 'Spanish',
+                is_active: true,
+                stock: 0,
+                price: 0,
+                author_ids: [],
+              });
               setIsModalOpen(true);
             }}
           >
@@ -1053,6 +1070,68 @@ export const AdminBooksPage = () => {
                       placeholder="https://ejemplo.com/imagen.jpg"
                       size="large"
                       type="url"
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item label="Autores">
+                <Controller
+                  name="author_ids"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      {...field}
+                      mode="multiple"
+                      placeholder="Seleccionar autores"
+                      size="large"
+                      allowClear
+                      showSearch
+                      loading={authorsLoading}
+                      filterOption={(input, option) =>
+                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                      }
+                      options={(authors || []).map((author) => ({
+                        value: author.id,
+                        label: `${author.first_name} ${author.last_name}`,
+                      }))}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={12}>
+              <Form.Item label="Autor Principal">
+                <Controller
+                  name="primary_author_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      {...field}
+                      placeholder="Seleccionar autor principal"
+                      size="large"
+                      allowClear
+                      showSearch
+                      loading={authorsLoading}
+                      disabled={!selectedAuthorIds || selectedAuthorIds.length === 0}
+                      filterOption={(input, option) =>
+                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                      }
+                      options={
+                        selectedAuthorIds.length > 0
+                          ? (authors || [])
+                              .filter((author) => selectedAuthorIds.includes(author.id))
+                              .map((author) => ({
+                                value: author.id,
+                                label: `${author.first_name} ${author.last_name}`,
+                              }))
+                          : []
+                      }
                     />
                   )}
                 />

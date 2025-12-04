@@ -49,6 +49,7 @@ interface Book {
   publication_date?: string;
   language: string;
   cover_image_url?: string;
+  authors?: Array<{ id: string; first_name: string; last_name: string; is_primary: boolean }>;
 }
 
 interface Review {
@@ -279,6 +280,18 @@ export const BookDetailPage = () => {
 
           <Descriptions column={1} bordered>
             <Descriptions.Item label="ISBN">{book.isbn}</Descriptions.Item>
+            {book.authors && book.authors.length > 0 && (
+              <Descriptions.Item label="Autor(es)">
+                {book.authors
+                  .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0))
+                  .map((author, index) => (
+                    <span key={author.id}>
+                      {author.first_name} {author.last_name}
+                      {index < book.authors!.length - 1 && ', '}
+                    </span>
+                  ))}
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label="Idioma">{book.language}</Descriptions.Item>
             {book.pages && (
               <Descriptions.Item label="Páginas">{book.pages}</Descriptions.Item>

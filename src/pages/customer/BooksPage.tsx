@@ -45,6 +45,7 @@ interface Book {
   publication_date?: string;
   language?: string;
   cover_image_url?: string;
+  authors?: Array<{ id: string; first_name: string; last_name: string; is_primary: boolean }>;
 }
 
 interface BookSearchResult {
@@ -58,6 +59,7 @@ interface BookSearchResult {
   category_name?: string;
   publication_date?: string;
   language?: string;
+  authors?: Array<{ id: string; first_name: string; last_name: string; is_primary: boolean }>;
 }
 
 interface BooksResponse {
@@ -443,6 +445,17 @@ export const BooksPage = () => {
                                     </>
                                   )}
                                 </Space>
+                                {book.authors && book.authors.length > 0 && (
+                                  <div style={{ marginTop: 8 }}>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                      Por:{' '}
+                                      {book.authors
+                                        .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0))
+                                        .map((author) => `${author.first_name} ${author.last_name}`)
+                                        .join(', ')}
+                                    </Text>
+                                  </div>
+                                )}
                                 {book.category_name && (
                                   <div style={{ marginTop: 8 }}>
                                     <Tag color="blue">{book.category_name}</Tag>
