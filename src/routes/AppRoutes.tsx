@@ -10,6 +10,7 @@ import { CheckoutPage } from '../pages/customer/CheckoutPage';
 import { OrdersPage } from '../pages/customer/OrdersPage';
 import { OrderDetailPage } from '../pages/customer/OrderDetailPage';
 import { AddressesPage } from '../pages/customer/AddressesPage';
+import { MyBooksPage } from '../pages/customer/MyBooksPage';
 import { AdminBooksPage } from '../pages/admin/AdminBooksPage';
 import { AdminOrdersPage } from '../pages/admin/AdminOrdersPage';
 import { AdminUsersPage } from '../pages/admin/AdminUsersPage';
@@ -41,6 +42,7 @@ export const AppRoutes = () => {
           <Route path="checkout" element={<CheckoutPage />} />
           <Route path="orders" element={<OrdersPage />} />
           <Route path="orders/:id" element={<OrderDetailPage />} />
+          <Route path="my-books" element={<MyBooksPage />} />
           <Route path="addresses" element={<AddressesPage />} />
 
           <Route path="admin">

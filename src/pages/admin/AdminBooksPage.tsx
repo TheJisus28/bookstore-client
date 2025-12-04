@@ -18,19 +18,32 @@ import {
   DatePicker,
   Alert,
   Spin,
+  Card,
+  Tag,
+  Divider,
+  App,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  FilterOutlined,
+  ClearOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+} from '@ant-design/icons';
 import api from '../../config/api';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import dayjs from 'dayjs';
+import dayjs, { Dayjs } from 'dayjs';
 import type { ColumnsType } from 'antd/es/table';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface Book {
   id: string;
+  book_id?: string;
   isbn: string;
   title: string;
   description?: string;
@@ -43,11 +56,30 @@ interface Book {
   category_id?: string;
   cover_image_url?: string;
   is_active: boolean;
+  publisher_name?: string;
+  category_name?: string;
+}
+
+interface BookSearchResult {
+  book_id: string;
+  title: string;
+  price: number | string;
+  stock: number;
+  publisher_name?: string;
+  category_name?: string;
+  publication_date?: string;
+  language?: string;
 }
 
 interface Category {
   id: string;
   name: string;
+}
+
+interface Author {
+  id: string;
+  first_name: string;
+  last_name: string;
 }
 
 interface Publisher {
@@ -76,21 +108,79 @@ export const AdminBooksPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [filtersVisible, setFiltersVisible] = useState(false);
   const queryClient = useQueryClient();
+  const { message: messageApi } = App.useApp();
 
+  // Filter states
+  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
+  const [authorId, setAuthorId] = useState<string | undefined>(undefined);
+  const [publisherId, setPublisherId] = useState<string | undefined>(undefined);
+  const [minPrice, setMinPrice] = useState<number | undefined>(undefined);
+  const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
+  const [minRating, setMinRating] = useState<number | undefined>(undefined);
+  const [language, setLanguage] = useState<string | undefined>(undefined);
+  const [minStock, setMinStock] = useState<number | undefined>(undefined);
+  const [maxStock, setMaxStock] = useState<number | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+  const [sortBy, setSortBy] = useState<string>('title');
+  const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('ASC');
 
-  const { data, isLoading, error, isError } = useQuery<{
+  // Fetch categories, authors, publishers for filters
+  const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await api.get('/categories?limit=100');
+      return response.data.data || [];
+    },
+  });
+
+  const { data: authors, isLoading: authorsLoading } = useQuery<Author[]>({
+    queryKey: ['authors'],
+    queryFn: async () => {
+      const response = await api.get('/authors?limit=100');
+      return response.data.data || [];
+    },
+  });
+
+  const { data: publishers, isLoading: publishersLoading } = useQuery<Publisher[]>({
+    queryKey: ['publishers'],
+    queryFn: async () => {
+      const response = await api.get('/publishers?limit=100');
+      return response.data.data || [];
+    },
+  });
+
+  // Check if we should use advanced search or normal search
+  const hasFilters = !!(
+    search ||
+    categoryId ||
+    authorId ||
+    publisherId ||
+    minPrice !== undefined ||
+    maxPrice !== undefined ||
+    minRating !== undefined ||
+    language ||
+    minStock !== undefined ||
+    maxStock !== undefined ||
+    dateRange ||
+    sortBy !== 'title' ||
+    sortOrder !== 'ASC'
+  );
+
+  // Normal books query (when no filters)
+  const { data: normalData, isLoading: normalLoading } = useQuery<{
     data: Book[];
     total: number;
     page: number;
     limit: number;
   }>({
-    queryKey: ['admin-books', page],
+    queryKey: ['admin-books', 'normal', page],
     queryFn: async () => {
       try {
         const response = await api.get(`/books/admin?page=${page}&limit=10`);
-        // Convertir price de string a number si viene como string
-        const books = response.data.data.map((book: any) => ({
+        const books = response.data.data.map((book: Book) => ({
           ...book,
           price: typeof book.price === 'string' ? parseFloat(book.price) : book.price,
         }));
@@ -101,31 +191,135 @@ export const AdminBooksPage = () => {
       } catch (err: unknown) {
         const error = err as { response?: { data?: { message?: string }; status?: number } };
         if (error.response?.status === 401) {
-          message.error('No autorizado. Por favor, inicia sesión nuevamente.');
+          messageApi.error('No autorizado. Por favor, inicia sesión nuevamente.');
         } else {
-          message.error(error.response?.data?.message || 'Error al cargar los libros');
+          messageApi.error(error.response?.data?.message || 'Error al cargar los libros');
         }
         throw err;
       }
     },
+    enabled: !hasFilters,
     retry: 1,
   });
 
-  const { data: categories } = useQuery<Category[]>({
-    queryKey: ['categories'],
+  // Advanced search query (when filters are active)
+  const buildAdvancedQueryParams = () => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: '10',
+    });
+
+    if (search) params.append('search', search);
+    if (categoryId) params.append('category', categoryId);
+    if (authorId) params.append('author', authorId);
+    if (publisherId) params.append('publisher', publisherId);
+    if (minPrice !== undefined) params.append('minPrice', minPrice.toString());
+    if (maxPrice !== undefined) params.append('maxPrice', maxPrice.toString());
+    if (minRating !== undefined) params.append('minRating', minRating.toString());
+    if (language) params.append('language', language);
+    if (minStock !== undefined) params.append('minStock', minStock.toString());
+    if (maxStock !== undefined) params.append('maxStock', maxStock.toString());
+    if (dateRange && dateRange[0]) {
+      params.append('startDate', dateRange[0].format('YYYY-MM-DD'));
+    }
+    if (dateRange && dateRange[1]) {
+      params.append('endDate', dateRange[1].format('YYYY-MM-DD'));
+    }
+    if (sortBy) params.append('sortBy', sortBy);
+    if (sortOrder) params.append('sortOrder', sortOrder);
+
+    return params.toString();
+  };
+
+  const { data: advancedData, isLoading: advancedLoading } = useQuery<{
+    data: Book[];
+    total: number;
+    page: number;
+    limit: number;
+  }>({
+    queryKey: [
+      'admin-books',
+      'advanced',
+      page,
+      search,
+      categoryId,
+      authorId,
+      publisherId,
+      minPrice,
+      maxPrice,
+      minRating,
+      language,
+      minStock,
+      maxStock,
+      dateRange,
+      sortBy,
+      sortOrder,
+    ],
     queryFn: async () => {
-      const response = await api.get('/categories?limit=100');
-      return response.data.data;
+      try {
+        const params = buildAdvancedQueryParams();
+        const response = await api.get(`/books/search/advanced?${params}`);
+        const books = response.data.data.map((book: BookSearchResult) => ({
+          ...book,
+          id: book.book_id,
+          price: typeof book.price === 'string' ? parseFloat(book.price) : book.price,
+        }));
+        return {
+          ...response.data,
+          data: books,
+        };
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { message?: string }; status?: number } };
+        if (error.response?.status === 401) {
+          messageApi.error('No autorizado. Por favor, inicia sesión nuevamente.');
+        } else {
+          messageApi.error(error.response?.data?.message || 'Error al cargar los libros');
+        }
+        throw err;
+      }
     },
+    enabled: hasFilters,
+    retry: 1,
   });
 
-  const { data: publishers } = useQuery<Publisher[]>({
-    queryKey: ['publishers'],
-    queryFn: async () => {
-      const response = await api.get('/publishers?limit=100');
-      return response.data.data;
-    },
-  });
+  const data = hasFilters ? advancedData : normalData;
+  const isLoading = hasFilters ? advancedLoading : normalLoading;
+
+  const clearFilters = () => {
+    setSearch('');
+    setCategoryId(undefined);
+    setAuthorId(undefined);
+    setPublisherId(undefined);
+    setMinPrice(undefined);
+    setMaxPrice(undefined);
+    setMinRating(undefined);
+    setLanguage(undefined);
+    setMinStock(undefined);
+    setMaxStock(undefined);
+    setDateRange(null);
+    setSortBy('title');
+    setSortOrder('ASC');
+    setPage(1);
+    messageApi.success({
+      content: '✅ Filtros limpiados',
+      duration: 2,
+    });
+  };
+
+  const activeFiltersCount = () => {
+    let count = 0;
+    if (search) count++;
+    if (categoryId) count++;
+    if (authorId) count++;
+    if (publisherId) count++;
+    if (minPrice !== undefined || maxPrice !== undefined) count++;
+    if (minRating !== undefined) count++;
+    if (language) count++;
+    if (minStock !== undefined || maxStock !== undefined) count++;
+    if (dateRange) count++;
+    if (sortBy !== 'title' || sortOrder !== 'ASC') count++;
+    return count;
+  };
 
   const {
     control,
@@ -149,7 +343,7 @@ export const AdminBooksPage = () => {
       return response.data;
     },
     onSuccess: () => {
-      message.success('Libro creado exitosamente');
+      messageApi.success('Libro creado exitosamente');
       setIsModalOpen(false);
       reset();
       queryClient.invalidateQueries({ queryKey: ['admin-books'] });
@@ -162,7 +356,7 @@ export const AdminBooksPage = () => {
       return response.data;
     },
     onSuccess: () => {
-      message.success('Libro actualizado exitosamente');
+      messageApi.success('Libro actualizado exitosamente');
       setIsModalOpen(false);
       setEditingBook(null);
       reset();
@@ -175,7 +369,7 @@ export const AdminBooksPage = () => {
       await api.delete(`/books/${id}`);
     },
     onSuccess: () => {
-      message.success('Libro eliminado');
+      messageApi.success('Libro eliminado');
       queryClient.invalidateQueries({ queryKey: ['admin-books'] });
     },
   });
@@ -207,6 +401,8 @@ export const AdminBooksPage = () => {
     setIsModalOpen(true);
   };
 
+  const getBookId = (book: Book) => book.id || book.book_id || '';
+
   const columns: ColumnsType<Book> = [
     {
       title: 'ISBN',
@@ -222,7 +418,7 @@ export const AdminBooksPage = () => {
       title: 'Precio',
       dataIndex: 'price',
       key: 'price',
-      render: (price) => `$${typeof price === 'number' ? price.toFixed(2) : parseFloat(price || '0').toFixed(2)}`,
+      render: (price) => `$${typeof price === 'number' ? price.toFixed(2) : parseFloat(String(price || '0')).toFixed(2)}`,
     },
     {
       title: 'Stock',
@@ -245,7 +441,7 @@ export const AdminBooksPage = () => {
           </Button>
           <Popconfirm
             title="¿Eliminar este libro?"
-            onConfirm={() => deleteMutation.mutate(record.id)}
+            onConfirm={() => deleteMutation.mutate(getBookId(record))}
           >
             <Button danger icon={<DeleteOutlined />}>
               Eliminar
@@ -256,69 +452,321 @@ export const AdminBooksPage = () => {
     },
   ];
 
-  // Debug
-  console.log('AdminBooksPage - data:', data);
-  console.log('AdminBooksPage - isLoading:', isLoading);
-  console.log('AdminBooksPage - isError:', isError);
-
   return (
     <div style={{ padding: '24px', background: '#fff', minHeight: '100%' }}>
       <Space style={{ marginBottom: 24, width: '100%', flexWrap: 'wrap' }} direction="horizontal">
         <Title level={2} style={{ margin: 0 }}>
           Administrar Libros
         </Title>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            setEditingBook(null);
-            reset();
-            setIsModalOpen(true);
-          }}
-        >
-          Nuevo Libro
-        </Button>
+        <Space>
+          {hasFilters && (
+            <Tag color="blue">
+              {activeFiltersCount()} filtro{activeFiltersCount() > 1 ? 's' : ''} activo
+              {activeFiltersCount() > 1 ? 's' : ''}
+            </Tag>
+          )}
+          <Button
+            icon={<FilterOutlined />}
+            onClick={() => setFiltersVisible(!filtersVisible)}
+            type={filtersVisible ? 'primary' : 'default'}
+          >
+            Filtros
+          </Button>
+          {hasFilters && (
+            <Button icon={<ClearOutlined />} onClick={clearFilters}>
+              Limpiar
+            </Button>
+          )}
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              setEditingBook(null);
+              reset();
+              setIsModalOpen(true);
+            }}
+          >
+            Nuevo Libro
+          </Button>
+        </Space>
       </Space>
 
-      {isError && (
-        <Alert
-          message="Error"
-          description={
-            (error as { response?: { data?: { message?: string } } })?.response?.data
-              ?.message || 'Error al cargar los libros. Por favor, intenta de nuevo.'
-          }
-          type="error"
-          showIcon
-          style={{ marginBottom: 24 }}
-        />
-      )}
+      <Row gutter={24}>
+        <Col xs={24} lg={filtersVisible ? 18 : 24}>
+          <Space direction="vertical" size="middle" style={{ width: '100%', marginBottom: 24 }}>
+            <Input
+              prefix={<FilterOutlined />}
+              size="large"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              style={{ maxWidth: 600 }}
+              allowClear
+            />
 
-      {isLoading ? (
-        <div style={{ textAlign: 'center', padding: 50 }}>
-          <Spin size="large" />
-        </div>
-      ) : data && data.data ? (
-        <Table
-          columns={columns}
-          dataSource={data.data}
-          rowKey="id"
-          loading={isLoading}
-          pagination={{
-            current: page,
-            total: data.total || 0,
-            pageSize: data.limit || 10,
-            onChange: setPage,
-          }}
-          scroll={{ x: 800 }}
-          locale={{
-            emptyText: 'No hay libros disponibles',
-          }}
-        />
-      ) : (
-        <div style={{ textAlign: 'center', padding: 50 }}>
-          <p>No hay datos disponibles</p>
-        </div>
-      )}
+            <Space style={{ width: '100%', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+              <Text type="secondary">
+                {data && (
+                  <>
+                    Mostrando {data.data.length} de {data.total} libro{data.total !== 1 ? 's' : ''}
+                  </>
+                )}
+              </Text>
+              <Space>
+                <Text strong>Ordenar por:</Text>
+                <Select
+                  style={{ width: 150 }}
+                  value={sortBy}
+                  onChange={setSortBy}
+                  options={[
+                    { value: 'title', label: 'Título' },
+                    { value: 'price', label: 'Precio' },
+                    { value: 'date', label: 'Fecha' },
+                    { value: 'rating', label: 'Rating' },
+                  ]}
+                />
+                <Button
+                  icon={sortOrder === 'ASC' ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+                  onClick={() => setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC')}
+                >
+                  {sortOrder}
+                </Button>
+              </Space>
+            </Space>
+          </Space>
+
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: 50 }}>
+              <Spin size="large" />
+            </div>
+          ) : data && data.data ? (
+            <Table
+              columns={columns}
+              dataSource={data.data}
+              rowKey={(record) => getBookId(record)}
+              loading={isLoading}
+              pagination={{
+                current: page,
+                total: data.total || 0,
+                pageSize: data.limit || 10,
+                onChange: setPage,
+              }}
+              scroll={{ x: 800 }}
+              locale={{
+                emptyText: 'No hay libros disponibles',
+              }}
+            />
+          ) : (
+            <div style={{ textAlign: 'center', padding: 50 }}>
+              <p>No hay datos disponibles</p>
+            </div>
+          )}
+        </Col>
+
+        {filtersVisible && (
+          <Col xs={24} lg={6}>
+            <Card
+              title={
+                <Space>
+                  <Text strong>Filtros</Text>
+                  {hasFilters && (
+                    <Tag color="blue" style={{ marginLeft: 8 }}>
+                      {activeFiltersCount()}
+                    </Tag>
+                  )}
+                </Space>
+              }
+              extra={
+                hasFilters && (
+                  <Button type="link" size="small" onClick={clearFilters}>
+                    Limpiar
+                  </Button>
+                )
+              }
+              style={{ position: 'sticky', top: 20 }}
+            >
+              <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                    Categoría
+                  </Text>
+                  <Select
+                    style={{ width: '100%' }}
+                    placeholder="Todas"
+                    value={categoryId}
+                    onChange={setCategoryId}
+                    allowClear
+                    showSearch
+                    loading={categoriesLoading}
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    options={(categories || []).map((cat) => ({
+                      value: cat.id,
+                      label: cat.name,
+                    }))}
+                  />
+                </div>
+
+                <Divider style={{ margin: '8px 0' }} />
+
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                    Autor
+                  </Text>
+                  <Select
+                    style={{ width: '100%' }}
+                    placeholder="Todos"
+                    value={authorId}
+                    onChange={setAuthorId}
+                    allowClear
+                    showSearch
+                    loading={authorsLoading}
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    options={(authors || []).map((author) => ({
+                      value: author.id,
+                      label: `${author.first_name} ${author.last_name}`,
+                    }))}
+                  />
+                </div>
+
+                <Divider style={{ margin: '8px 0' }} />
+
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                    Editorial
+                  </Text>
+                  <Select
+                    style={{ width: '100%' }}
+                    placeholder="Todas"
+                    value={publisherId}
+                    onChange={setPublisherId}
+                    allowClear
+                    showSearch
+                    loading={publishersLoading}
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    options={(publishers || []).map((pub) => ({
+                      value: pub.id,
+                      label: pub.name,
+                    }))}
+                  />
+                </div>
+
+                <Divider style={{ margin: '8px 0' }} />
+
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                    Idioma
+                  </Text>
+                  <Select
+                    style={{ width: '100%' }}
+                    placeholder="Todos"
+                    value={language}
+                    onChange={setLanguage}
+                    allowClear
+                    options={[
+                      { value: 'Spanish', label: 'Español' },
+                      { value: 'English', label: 'Inglés' },
+                      { value: 'French', label: 'Francés' },
+                      { value: 'German', label: 'Alemán' },
+                    ]}
+                  />
+                </div>
+
+                <Divider style={{ margin: '8px 0' }} />
+
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                    Precio
+                  </Text>
+                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                    <InputNumber
+                      placeholder="Mín"
+                      min={0}
+                      value={minPrice}
+                      onChange={(value) => setMinPrice(value || undefined)}
+                      prefix="$"
+                      style={{ width: '100%' }}
+                    />
+                    <InputNumber
+                      placeholder="Máx"
+                      min={0}
+                      value={maxPrice}
+                      onChange={(value) => setMaxPrice(value || undefined)}
+                      prefix="$"
+                      style={{ width: '100%' }}
+                    />
+                  </Space>
+                </div>
+
+                <Divider style={{ margin: '8px 0' }} />
+
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                    Rating mínimo
+                  </Text>
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    placeholder="0"
+                    min={0}
+                    max={5}
+                    step={0.5}
+                    value={minRating}
+                    onChange={(value) => setMinRating(value || undefined)}
+                  />
+                </div>
+
+                <Divider style={{ margin: '8px 0' }} />
+
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                    Stock
+                  </Text>
+                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                    <InputNumber
+                      placeholder="Mín"
+                      min={0}
+                      value={minStock}
+                      onChange={(value) => setMinStock(value || undefined)}
+                      style={{ width: '100%' }}
+                    />
+                    <InputNumber
+                      placeholder="Máx"
+                      min={0}
+                      value={maxStock}
+                      onChange={(value) => setMaxStock(value || undefined)}
+                      style={{ width: '100%' }}
+                    />
+                  </Space>
+                </div>
+
+                <Divider style={{ margin: '8px 0' }} />
+
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                    Fecha de publicación
+                  </Text>
+                  <DatePicker.RangePicker
+                    style={{ width: '100%' }}
+                    value={dateRange}
+                    onChange={(dates) =>
+                      setDateRange(dates as [Dayjs | null, Dayjs | null] | null)
+                    }
+                    format="YYYY-MM-DD"
+                    placeholder={['Desde', 'Hasta']}
+                  />
+                </div>
+              </Space>
+            </Card>
+          </Col>
+        )}
+      </Row>
 
       <Modal
         title={editingBook ? 'Editar Libro' : 'Nuevo Libro'}
@@ -615,4 +1063,3 @@ export const AdminBooksPage = () => {
     </div>
   );
 };
-

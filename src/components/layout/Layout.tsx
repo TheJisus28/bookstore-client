@@ -55,6 +55,11 @@ export const Layout = () => {
       label: 'Mis Pedidos',
     },
     {
+      key: '/my-books',
+      icon: <BookOutlined />,
+      label: 'Mis Libros',
+    },
+    {
       key: '/addresses',
       icon: <EnvironmentOutlined />,
       label: 'Direcciones',
