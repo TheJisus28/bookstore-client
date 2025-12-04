@@ -30,14 +30,31 @@ export const AdminReportsPage = () => {
       const response = await api.get(
         `/reports/sales?startDate=${dateRange[0].format('YYYY-MM-DD')}&endDate=${dateRange[1].format('YYYY-MM-DD')}`,
       );
-      return response.data;
+      // Convertir valores numéricos de string a number si vienen como string
+      return response.data.map((item: any) => ({
+        ...item,
+        total_orders: typeof item.total_orders === 'string' ? parseInt(item.total_orders, 10) : item.total_orders,
+        unique_customers: typeof item.unique_customers === 'string' ? parseInt(item.unique_customers, 10) : item.unique_customers,
+        total_revenue: typeof item.total_revenue === 'string' ? parseFloat(item.total_revenue) : item.total_revenue,
+        total_items_sold: typeof item.total_items_sold === 'string' ? parseInt(item.total_items_sold, 10) : item.total_items_sold,
+        average_order_value: typeof item.average_order_value === 'string' ? parseFloat(item.average_order_value) : item.average_order_value,
+      }));
     },
     enabled: !!dateRange,
   });
 
-  const totalRevenue = salesReport?.reduce((sum, item) => sum + item.total_revenue, 0) || 0;
-  const totalOrders = salesReport?.reduce((sum, item) => sum + item.total_orders, 0) || 0;
-  const totalItems = salesReport?.reduce((sum, item) => sum + item.total_items_sold, 0) || 0;
+  const totalRevenue = salesReport?.reduce((sum, item) => {
+    const revenue = typeof item.total_revenue === 'number' ? item.total_revenue : parseFloat(item.total_revenue || '0');
+    return sum + revenue;
+  }, 0) || 0;
+  const totalOrders = salesReport?.reduce((sum, item) => {
+    const orders = typeof item.total_orders === 'number' ? item.total_orders : parseInt(item.total_orders || '0', 10);
+    return sum + orders;
+  }, 0) || 0;
+  const totalItems = salesReport?.reduce((sum, item) => {
+    const items = typeof item.total_items_sold === 'number' ? item.total_items_sold : parseInt(item.total_items_sold || '0', 10);
+    return sum + items;
+  }, 0) || 0;
 
   const columns: ColumnsType<SalesReport> = [
     {
@@ -60,7 +77,7 @@ export const AdminReportsPage = () => {
       title: 'Ingresos',
       dataIndex: 'total_revenue',
       key: 'total_revenue',
-      render: (revenue) => `$${revenue.toFixed(2)}`,
+      render: (revenue) => `$${typeof revenue === 'number' ? revenue.toFixed(2) : parseFloat(revenue || '0').toFixed(2)}`,
     },
     {
       title: 'Items Vendidos',
@@ -71,7 +88,7 @@ export const AdminReportsPage = () => {
       title: 'Ticket Promedio',
       dataIndex: 'average_order_value',
       key: 'average_order_value',
-      render: (value) => `$${value.toFixed(2)}`,
+      render: (value) => `$${typeof value === 'number' ? value.toFixed(2) : parseFloat(value || '0').toFixed(2)}`,
     },
   ];
 
